@@ -9,6 +9,13 @@ Rails.application.routes.draw do
   # get "manifest" => "rails/pwa#manifest", as: :pwa_manifest
   # get "service-worker" => "rails/pwa#service_worker", as: :pwa_service_worker
 
+  # Carrito. El carrito es único por sesión, así que es un recurso singular;
+  # sus líneas cuelgan de él y se identifican por product_id.
+  get    "cart",                   to: "cart#show",        as: :cart
+  post   "cart/items",             to: "cart#add_item",    as: :cart_items
+  patch  "cart/items/:product_id", to: "cart#update_item", as: :cart_item
+  delete "cart/items/:product_id", to: "cart#remove_item",  as: :remove_cart_item
+
   # Defines the root path route ("/")
-  # root "posts#index"
+  root "cart#show"
 end
