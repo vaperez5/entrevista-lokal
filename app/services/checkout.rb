@@ -93,13 +93,18 @@ class Checkout
     end
   end
 
+  # El mensaje se deriva de los errores REALES del registro. No asumimos la
+  # causa: si mañana falla unit_price, o cualquier validación nueva, el usuario
+  # lee lo que de verdad pasó y no un diagnóstico inventado.
   def message_for(record)
+    details = record.errors.full_messages.to_sentence.presence
+    return "No se pudo confirmar la compra." if details.nil?
+
     case record
     when OrderItem
-      "La cantidad para «#{record.product&.name}» no es válida."
+      "No se pudo agregar «#{record.product&.name}» a la orden: #{details}."
     else
-      record.errors.full_messages.to_sentence.presence ||
-        "No se pudo confirmar la compra."
+      "No se pudo confirmar la compra: #{details}."
     end
   end
 
