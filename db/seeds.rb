@@ -4,9 +4,13 @@
 # 1 tienda
 Store.find_or_create_by!(name: "Tienda Central")
 
-# 2 proveedores
+# 2 proveedores, con montos mínimos de compra distintos: Sur exige un mínimo y
+# Norte no (0 = sin mínimo), así se ven los dos casos en el flujo del carrito.
 proveedor_norte = Provider.find_or_create_by!(name: "Distribuidora Norte")
 proveedor_sur   = Provider.find_or_create_by!(name: "Distribuidora Sur")
+
+proveedor_norte.update!(min_amount: 0)
+proveedor_sur.update!(min_amount: 20_000)
 
 # 3 productos por proveedor (6 en total), precios en CLP y stock variados.
 productos = [

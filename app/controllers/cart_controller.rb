@@ -16,10 +16,8 @@ class CartController < ApplicationController
     # El agrupado se arma acá y no en la vista: la vista solo itera lo que
     # recibe. Además así el agrupado del carrito queda al lado del agrupado que
     # hará Checkout, y es evidente que ambos usan el mismo criterio (proveedor).
-    items = @cart.items
-
-    @items_by_provider = items.group_by { |item| item.product.provider }
-    @total = items.sum(&:line_total)
+    @items_by_provider = @cart.items_by_provider
+    @total = @items_by_provider.values.sum { |items| items.sum(&:line_total) }
   end
 
   def add_item
@@ -55,6 +53,14 @@ class CartController < ApplicationController
   # Traduce el Cart de la sesión a la lista plana que espera Checkout, delega,
   # y decide qué hacer según el Result. Ninguna lógica de negocio vive acá.
   def checkout
+    # El mínimo de compra se revisa acá antes de llamar al service: si algún
+    # proveedor no llega a su monto mínimo, el usuario vuelve al carrito con el
+    # error y el carrito INTACTO, listo para agregar lo que le falta. Checkout
+    # vuelve a validarlo por su cuenta (ver Checkout#validate_minimums!); esta
+    # verificación es la del flujo del carrito, no la última línea de defensa.
+    minimum_errors = @cart.minimum_errors
+    return redirect_to(cart_path, alert: minimum_errors.join(" ")) if minimum_errors.any?
+
     result = Checkout.new(store: current_store, items: checkout_items).call
 
     if result.ok?

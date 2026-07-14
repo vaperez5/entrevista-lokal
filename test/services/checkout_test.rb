@@ -98,6 +98,71 @@ class CheckoutTest < ActiveSupport::TestCase
     assert_equal before, counts
   end
 
+  # --- Monto mínimo de compra ---
+
+  test "un proveedor bajo su monto mínimo hace fallar la orden completa" do
+    @sur.update!(min_amount: 100_000)  # el molino (38.000 x 1) no alcanza
+    before = counts
+
+    result = checkout(
+      { product: @cafe,   quantity: 2 },  # Norte: sin mínimo, cumpliría
+      { product: @molino, quantity: 1 }   # Sur: no llega al mínimo
+    )
+
+    assert_not result.ok?
+    assert_nil result.order
+    assert_match "No se cumple con el monto mínimo de compra", result.error
+    assert_match @sur.name, result.error
+
+    # Todo o nada: la subórden de Norte, que sí cumplía, tampoco se creó.
+    assert_equal before, counts
+  end
+
+  test "el mínimo se mide contra el subtotal del proveedor, no contra el total de la orden" do
+    @sur.update!(min_amount: 50_000)
+
+    # El total del carrito (17.980 + 38.000 = 55.980) supera los 50.000, pero lo
+    # que se le compra a Sur (38.000) no. Igual debe fallar.
+    result = checkout(
+      { product: @cafe,   quantity: 2 },
+      { product: @molino, quantity: 1 }
+    )
+
+    assert_not result.ok?
+    assert_match Provider::MINIMUM_NOT_MET, result.error
+  end
+
+  test "se reportan todos los proveedores que no cumplen el mínimo, no solo el primero" do
+    @norte.update!(min_amount: 100_000)
+    @sur.update!(min_amount: 100_000)
+
+    result = checkout(
+      { product: @cafe,   quantity: 1 },
+      { product: @molino, quantity: 1 }
+    )
+
+    assert_not result.ok?
+    assert_match @norte.name, result.error
+    assert_match @sur.name,   result.error
+  end
+
+  test "alcanzar exactamente el mínimo es suficiente" do
+    @sur.update!(min_amount: 76_000)  # 2 x 38.000
+
+    result = checkout({ product: @molino, quantity: 2 })
+
+    assert result.ok?
+    assert_equal 76_000, result.order.total
+  end
+
+  test "un proveedor sin mínimo (0) no bloquea la compra" do
+    assert_equal 0, @norte.min_amount
+
+    result = checkout({ product: @cafe, quantity: 1 })
+
+    assert result.ok?
+  end
+
   # --- Entradas inválidas ---
 
   test "un carrito vacío falla con un mensaje claro y no crea nada" do

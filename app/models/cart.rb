@@ -77,6 +77,27 @@ class Cart
     end
   end
 
+  # Agrupa las líneas por proveedor. Es el MISMO criterio con el que Checkout
+  # arma las subórdenes, y por eso es también el criterio con el que se evalúa
+  # el mínimo de compra: el mínimo se mide contra el subtotal de cada proveedor,
+  # no contra el total del carrito.
+  def items_by_provider
+    items.group_by { |item| item.product.provider }
+  end
+
+  # Mensajes de los proveedores cuyo subtotal no llega a su monto mínimo.
+  # Vacío = el carrito se puede confirmar.
+  #
+  # Devuelve TODOS los incumplimientos, no el primero: si dos proveedores no
+  # llegan al mínimo, el usuario se entera de los dos de una vez en lugar de
+  # arreglar uno y toparse con el otro.
+  def minimum_errors
+    items_by_provider.filter_map do |provider, items|
+      subtotal = items.sum(&:line_total)
+      provider.minimum_error(subtotal) unless provider.minimum_met?(subtotal)
+    end
+  end
+
   def empty?
     @quantities.empty?
   end

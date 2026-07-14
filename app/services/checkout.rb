@@ -33,8 +33,11 @@ class Checkout
     return failure(MISSING_STORE) if @store.nil?
     return failure(EMPTY_CART) if @items.empty?
 
+    groups = items_by_provider
+    validate_minimums!(groups)
+
     order = ActiveRecord::Base.transaction do
-      create_order!
+      create_order!(groups)
     end
 
     Result.new(ok: true, order: order)
@@ -46,11 +49,34 @@ class Checkout
 
   private
 
-  def create_order!
+  # El mínimo de compra es del PROVEEDOR, así que se evalúa contra el subtotal
+  # que le corresponde a su subórden, no contra el total de la orden.
+  #
+  # Es todo o nada: basta que UN proveedor no llegue a su mínimo para que la
+  # orden completa no se cree. Por eso se valida acá, antes de abrir la
+  # transacción: no hay nada que revertir si ni siquiera empezamos.
+  #
+  # El Checkout revalida lo que el Cart ya validó a propósito: el service es su
+  # propia frontera de consistencia y no confía en quien lo llama (un carrito
+  # viejo en la sesión, otro cliente, un job).
+  def validate_minimums!(groups)
+    providers = Provider.where(id: groups.keys).index_by(&:id)
+
+    errors = groups.filter_map do |provider_id, items|
+      provider = providers.fetch(provider_id)
+      subtotal = items.sum { |item| item[:quantity] * item[:product].price.to_i }
+
+      provider.minimum_error(subtotal) unless provider.minimum_met?(subtotal)
+    end
+
+    raise InvalidItem, errors.join(" ") if errors.any?
+  end
+
+  def create_order!(groups)
     order = Order.create!(store: @store)
 
     # Una subórden por cada proveedor distinto involucrado.
-    items_by_provider.each do |provider_id, items|
+    groups.each do |provider_id, items|
       sub_order = order.sub_orders.create!(provider_id: provider_id)
 
       items.each do |item|

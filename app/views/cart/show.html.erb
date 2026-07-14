@@ -11,8 +11,18 @@
   </p>
 
   <% @items_by_provider.each do |provider, items| %>
+    <% subtotal = items.sum(&:line_total) %>
     <section class="group">
       <h2><%= provider.name %></h2>
+
+      <% if provider.min_amount.positive? %>
+        <p class="hint">
+          Compra mínima: <%= clp(provider.min_amount) %>.
+          <% unless provider.minimum_met?(subtotal) %>
+            <strong>Faltan <%= clp(provider.min_amount - subtotal) %> para alcanzarla.</strong>
+          <% end %>
+        </p>
+      <% end %>
 
       <table>
         <thead>
@@ -47,7 +57,7 @@
         <tfoot>
           <tr>
             <td colspan="3" class="label">Subtotal <%= provider.name %></td>
-            <td class="num"><strong><%= clp(items.sum(&:line_total)) %></strong></td>
+            <td class="num"><strong><%= clp(subtotal) %></strong></td>
             <td colspan="2"></td>
           </tr>
         </tfoot>

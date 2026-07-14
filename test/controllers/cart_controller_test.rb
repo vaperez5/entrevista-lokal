@@ -84,4 +84,49 @@ class CartControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_match @product.name, response.body
   end
+
+  # --- Monto mínimo de compra ---
+
+  test "confirmar la compra bajo el monto mínimo falla, no crea la orden y deja el carrito intacto" do
+    Store.create!(name: "Tienda Test")
+    @provider.update!(min_amount: 20_000)  # 2 x 5.000 no alcanza
+
+    post cart_items_path, params: { product_id: @product.id, quantity: 2 }
+
+    assert_no_difference [ "Order.count", "SubOrder.count", "OrderItem.count" ] do
+      post checkout_path
+    end
+
+    assert_redirected_to cart_path
+    assert_match "No se cumple con el monto mínimo de compra", flash[:alert]
+    # El carrito no se vacía: el usuario puede agregar lo que le falta y reintentar.
+    # (La sesión ya round-trippeó a JSON, así que sus claves vuelven como String:
+    # se compara a través de Cart, que es quien las normaliza.)
+    assert_equal({ @product.id => 2 }, Cart.new(session[:cart]).to_h)
+  end
+
+  test "el carrito avisa cuánto falta para el mínimo del proveedor" do
+    @provider.update!(min_amount: 20_000)
+    post cart_items_path, params: { product_id: @product.id, quantity: 2 }
+
+    get cart_path
+
+    assert_response :success
+    assert_match "Compra mínima", response.body
+    assert_match "Faltan $10.000", response.body
+  end
+
+  test "confirmar la compra cumpliendo el mínimo crea la orden" do
+    Store.create!(name: "Tienda Test")
+    @provider.update!(min_amount: 20_000)
+
+    post cart_items_path, params: { product_id: @product.id, quantity: 4 }  # 20.000
+
+    assert_difference "Order.count", 1 do
+      post checkout_path
+    end
+
+    assert_redirected_to order_path(Order.last)
+    assert_nil session[:cart]
+  end
 end
