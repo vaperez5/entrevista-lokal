@@ -1,0 +1,7 @@
+<% if flash[:notice].present? %>
+  <p class="flash flash--notice"><%= flash[:notice] %></p>
+<% end %>
+
+<% if flash[:alert].present? %>
+  <p class="flash flash--alert"><%= flash[:alert] %></p>
+<% end %>

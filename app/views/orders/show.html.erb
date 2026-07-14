@@ -1,32 +1,50 @@
-<%# Vista mínima, solo para verificar que el checkout creó bien la orden.
-    La vista definitiva va en el incremento de vistas. %>
-
-<% if notice %><p style="color: green;"><%= notice %></p><% end %>
+<% content_for :title, "Orden ##{@order.id}" %>
 
 <h1>Orden #<%= @order.id %></h1>
-<p>Tienda: <%= @order.store.name %></p>
+
+<p class="meta">
+  Tienda: <strong><%= @order.store.name %></strong> &middot;
+  Creada: <%= l(@order.created_at, format: :short) %>
+</p>
+
+<p class="hint">
+  Los precios de esta orden quedaron <strong>fijados al momento de la compra</strong>.
+  Si el catálogo cambia de precio después, esta orden no cambia.
+</p>
 
 <% @order.sub_orders.each do |sub_order| %>
-  <h2>Subórden #<%= sub_order.id %> — <%= sub_order.provider.name %></h2>
-  <table border="1" cellpadding="6">
-    <tr>
-      <th>Producto</th>
-      <th>Precio congelado</th>
-      <th>Cantidad</th>
-      <th>Total línea</th>
-    </tr>
-    <% sub_order.order_items.each do |item| %>
-      <tr>
-        <td><%= item.product.name %></td>
-        <td><%= item.unit_price %></td>
-        <td><%= item.quantity %></td>
-        <td><%= item.line_total %></td>
-      </tr>
-    <% end %>
-  </table>
-  <p>Subtotal <%= sub_order.provider.name %>: <strong><%= sub_order.subtotal %></strong></p>
+  <section class="group">
+    <h2>Subórden #<%= sub_order.id %> &mdash; <%= sub_order.provider.name %></h2>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Producto</th>
+          <th class="num">Precio de compra</th>
+          <th class="num">Cantidad</th>
+          <th class="num">Total línea</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% sub_order.order_items.each do |item| %>
+          <tr>
+            <td><%= item.product.name %></td>
+            <td class="num"><%= clp(item.unit_price) %></td>
+            <td class="num"><%= item.quantity %></td>
+            <td class="num"><%= clp(item.line_total) %></td>
+          </tr>
+        <% end %>
+      </tbody>
+      <tfoot>
+        <tr>
+          <td colspan="3" class="label">Subtotal <%= sub_order.provider.name %></td>
+          <td class="num"><strong><%= clp(sub_order.subtotal) %></strong></td>
+        </tr>
+      </tfoot>
+    </table>
+  </section>
 <% end %>
 
-<h2>Total: <%= @order.total %></h2>
+<p class="total">Total de la orden: <strong><%= clp(@order.total) %></strong></p>
 
-<p><%= link_to "Volver al carrito", cart_path %></p>
+<p><%= link_to "Volver al catálogo", root_path %></p>

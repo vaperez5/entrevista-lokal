@@ -1,65 +1,64 @@
-<%# Vista mínima, solo para poder probar el carrito a mano. Sin agrupado por
-    proveedor ni subtotales: eso llega con las vistas del flujo completo. %>
-
-<% if notice %><p style="color: green;"><%= notice %></p><% end %>
-<% if alert %><p style="color: red;"><%= alert %></p><% end %>
+<% content_for :title, "Carrito" %>
 
 <h1>Carrito</h1>
 
 <% if @cart.empty? %>
   <p>El carrito está vacío.</p>
+  <p><%= link_to "Ir al catálogo", root_path %></p>
 <% else %>
-  <table border="1" cellpadding="6">
-    <tr>
-      <th>Producto</th>
-      <th>Proveedor</th>
-      <th>Precio</th>
-      <th>Cantidad</th>
-      <th colspan="2">Acciones</th>
-    </tr>
-    <% @items.each do |item| %>
-      <tr>
-        <td><%= item.product.name %></td>
-        <td><%= item.product.provider.name %></td>
-        <td><%= item.product.price %></td>
-        <td><%= item.quantity %></td>
-        <td>
-          <%= form_with url: cart_item_path(item.product), method: :patch do |f| %>
-            <%= f.number_field :quantity, value: item.quantity %>
-            <%= f.submit "Actualizar" %>
+  <p class="hint">
+    Precios vigentes del catálogo. El precio queda fijado recién al confirmar la compra.
+  </p>
+
+  <% @items_by_provider.each do |provider, items| %>
+    <section class="group">
+      <h2><%= provider.name %></h2>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Producto</th>
+            <th class="num">Precio unitario</th>
+            <th class="num">Cantidad</th>
+            <th class="num">Total línea</th>
+            <th>Actualizar</th>
+            <th>Quitar</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% items.each do |item| %>
+            <tr>
+              <td><%= item.product.name %></td>
+              <td class="num"><%= clp(item.product.price) %></td>
+              <td class="num"><%= item.quantity %></td>
+              <td class="num"><%= clp(item.line_total) %></td>
+              <td>
+                <%= form_with url: cart_item_path(item.product), method: :patch, class: "inline-form" do |f| %>
+                  <%= f.number_field :quantity, value: item.quantity, min: 0, class: "qty" %>
+                  <%= f.submit "Actualizar" %>
+                <% end %>
+              </td>
+              <td>
+                <%= button_to "Quitar", remove_cart_item_path(item.product), method: :delete %>
+              </td>
+            </tr>
           <% end %>
-        </td>
-        <td>
-          <%= button_to "Quitar", remove_cart_item_path(item.product), method: :delete %>
-        </td>
-      </tr>
-    <% end %>
-  </table>
-
-  <%= button_to "Confirmar compra", checkout_path, method: :post %>
-<% end %>
-
-<h2>Productos disponibles</h2>
-
-<table border="1" cellpadding="6">
-  <tr>
-    <th>Producto</th>
-    <th>Proveedor</th>
-    <th>Precio</th>
-    <th>Agregar</th>
-  </tr>
-  <% @products.each do |product| %>
-    <tr>
-      <td><%= product.name %></td>
-      <td><%= product.provider.name %></td>
-      <td><%= product.price %></td>
-      <td>
-        <%= form_with url: cart_items_path, method: :post do |f| %>
-          <%= f.hidden_field :product_id, value: product.id %>
-          <%= f.number_field :quantity, value: 1 %>
-          <%= f.submit "Agregar" %>
-        <% end %>
-      </td>
-    </tr>
+        </tbody>
+        <tfoot>
+          <tr>
+            <td colspan="3" class="label">Subtotal <%= provider.name %></td>
+            <td class="num"><strong><%= clp(items.sum(&:line_total)) %></strong></td>
+            <td colspan="2"></td>
+          </tr>
+        </tfoot>
+      </table>
+    </section>
   <% end %>
-</table>
+
+  <p class="total">Total general: <strong><%= clp(@total) %></strong></p>
+
+  <div class="actions">
+    <%= button_to "Confirmar compra", checkout_path, method: :post, class: "primary" %>
+    <%= link_to "Seguir comprando", root_path %>
+  </div>
+<% end %>

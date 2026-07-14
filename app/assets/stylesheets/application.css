@@ -1,10 +1,126 @@
 /*
- * This is a manifest file that'll be compiled into application.css.
- *
- * With Propshaft, assets are served efficiently without preprocessing steps. You can still include
- * application-wide styles in this file, but keep in mind that CSS precedence will follow the standard
- * cascading order, meaning styles declared later in the document or manifest will override earlier ones,
- * depending on specificity.
- *
- * Consider organizing styles into separate files for maintainability.
+ * Estilos mínimos: el objetivo es que el flujo se lea claro, no que sea bonito.
+ * Sin frameworks, sin JS.
  */
+
+body {
+  font-family: system-ui, sans-serif;
+  color: #1a1a1a;
+  margin: 0;
+  line-height: 1.5;
+}
+
+main {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 1.5rem;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.5rem;
+  background: #1a1a1a;
+  color: #fff;
+}
+
+.topbar a {
+  color: #fff;
+  margin-left: 1rem;
+}
+
+h1 { margin-top: 0; }
+
+h2 {
+  font-size: 1.1rem;
+  margin: 0 0 .5rem;
+  padding-bottom: .25rem;
+  border-bottom: 2px solid #1a1a1a;
+}
+
+.hint, .meta {
+  color: #555;
+  font-size: .9rem;
+}
+
+.group { margin-bottom: 2rem; }
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th, td {
+  padding: .5rem .6rem;
+  border-bottom: 1px solid #ddd;
+  text-align: left;
+}
+
+thead th {
+  background: #f2f2f2;
+  font-size: .85rem;
+}
+
+.num { text-align: right; }
+.label { text-align: right; font-weight: 600; }
+
+tfoot td {
+  border-top: 2px solid #1a1a1a;
+  border-bottom: none;
+  background: #fafafa;
+}
+
+.total {
+  font-size: 1.2rem;
+  text-align: right;
+  padding-top: .5rem;
+  border-top: 2px solid #1a1a1a;
+}
+
+.inline-form {
+  display: flex;
+  gap: .35rem;
+}
+
+.qty { width: 4.5rem; }
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+input[type="submit"] {
+  cursor: pointer;
+  padding: .35rem .7rem;
+}
+
+.primary input[type="submit"] {
+  background: #1a1a1a;
+  color: #fff;
+  border: none;
+  padding: .6rem 1.2rem;
+  font-size: 1rem;
+}
+
+/* Mensajes de éxito y error */
+.flash {
+  padding: .75rem 1rem;
+  margin-bottom: 1rem;
+  border-left: 5px solid;
+  border-radius: 3px;
+}
+
+.flash--notice {
+  background: #e8f5e9;
+  border-color: #2e7d32;
+  color: #1b5e20;
+}
+
+.flash--alert {
+  background: #fdecea;
+  border-color: #c62828;
+  color: #b71c1c;
+}

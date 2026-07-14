@@ -23,6 +23,17 @@
   </head>
 
   <body>
-    <%= yield %>
+    <header class="topbar">
+      <strong>Marketplace B2B</strong>
+      <nav>
+        <%= link_to "Catálogo", root_path %>
+        <%= link_to "Carrito", cart_path %>
+      </nav>
+    </header>
+
+    <main>
+      <%= render "shared/flash" %>
+      <%= yield %>
+    </main>
   </body>
 </html>

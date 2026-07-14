@@ -9,6 +9,9 @@ Rails.application.routes.draw do
   # get "manifest" => "rails/pwa#manifest", as: :pwa_manifest
   # get "service-worker" => "rails/pwa#service_worker", as: :pwa_service_worker
 
+  # Catálogo: punto de entrada del flujo.
+  resources :products, only: [ :index ]
+
   # Carrito. El carrito es único por sesión, así que es un recurso singular;
   # sus líneas cuelgan de él y se identifican por product_id.
   get    "cart",                   to: "cart#show",        as: :cart
@@ -22,5 +25,5 @@ Rails.application.routes.draw do
   resources :orders, only: [ :show ]
 
   # Defines the root path route ("/")
-  root "cart#show"
+  root "products#index"
 end

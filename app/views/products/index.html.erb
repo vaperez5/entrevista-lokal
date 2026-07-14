@@ -1,0 +1,35 @@
+<% content_for :title, "Catálogo" %>
+
+<h1>Catálogo</h1>
+<p class="hint">Los precios mostrados son los precios vigentes del catálogo.</p>
+
+<% @products_by_provider.each do |provider, products| %>
+  <section class="group">
+    <h2><%= provider.name %></h2>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Producto</th>
+          <th class="num">Precio</th>
+          <th>Agregar al carrito</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% products.each do |product| %>
+          <tr>
+            <td><%= product.name %></td>
+            <td class="num"><%= clp(product.price) %></td>
+            <td>
+              <%= form_with url: cart_items_path, method: :post, class: "inline-form" do |f| %>
+                <%= f.hidden_field :product_id, value: product.id %>
+                <%= f.number_field :quantity, value: 1, min: 1, class: "qty" %>
+                <%= f.submit "Agregar" %>
+              <% end %>
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </section>
+<% end %>

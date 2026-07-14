@@ -9,12 +9,17 @@ class CartController < ApplicationController
   rescue_from ActiveRecord::RecordNotFound, with: :redirect_with_missing_product
 
   def show
-    @items = @cart.items
+    # Cart#items resuelve los Product REALES desde la BD, así que product.price
+    # y el line_total del carrito son los precios VIVOS del catálogo. El
+    # congelado recién ocurre al confirmar la compra, dentro de Checkout.
+    #
+    # El agrupado se arma acá y no en la vista: la vista solo itera lo que
+    # recibe. Además así el agrupado del carrito queda al lado del agrupado que
+    # hará Checkout, y es evidente que ambos usan el mismo criterio (proveedor).
+    items = @cart.items
 
-    # Temporal: mientras no exista el catálogo real, listamos los productos acá
-    # para poder agregarlos al carrito desde el browser. Se va cuando armemos
-    # las vistas del flujo completo.
-    @products = Product.includes(:provider).order(:id)
+    @items_by_provider = items.group_by { |item| item.product.provider }
+    @total = items.sum(&:line_total)
   end
 
   def add_item
