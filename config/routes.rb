@@ -16,6 +16,11 @@ Rails.application.routes.draw do
   patch  "cart/items/:product_id", to: "cart#update_item", as: :cart_item
   delete "cart/items/:product_id", to: "cart#remove_item",  as: :remove_cart_item
 
+  # Confirmar la compra: convierte el carrito en una orden.
+  post "checkout", to: "cart#checkout", as: :checkout
+
+  resources :orders, only: [ :show ]
+
   # Defines the root path route ("/")
   root "cart#show"
 end

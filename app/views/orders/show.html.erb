@@ -1,0 +1,32 @@
+<%# Vista mínima, solo para verificar que el checkout creó bien la orden.
+    La vista definitiva va en el incremento de vistas. %>
+
+<% if notice %><p style="color: green;"><%= notice %></p><% end %>
+
+<h1>Orden #<%= @order.id %></h1>
+<p>Tienda: <%= @order.store.name %></p>
+
+<% @order.sub_orders.each do |sub_order| %>
+  <h2>Subórden #<%= sub_order.id %> — <%= sub_order.provider.name %></h2>
+  <table border="1" cellpadding="6">
+    <tr>
+      <th>Producto</th>
+      <th>Precio congelado</th>
+      <th>Cantidad</th>
+      <th>Total línea</th>
+    </tr>
+    <% sub_order.order_items.each do |item| %>
+      <tr>
+        <td><%= item.product.name %></td>
+        <td><%= item.unit_price %></td>
+        <td><%= item.quantity %></td>
+        <td><%= item.line_total %></td>
+      </tr>
+    <% end %>
+  </table>
+  <p>Subtotal <%= sub_order.provider.name %>: <strong><%= sub_order.subtotal %></strong></p>
+<% end %>
+
+<h2>Total: <%= @order.total %></h2>
+
+<p><%= link_to "Volver al carrito", cart_path %></p>

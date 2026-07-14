@@ -47,7 +47,31 @@ class CartController < ApplicationController
     redirect_to cart_path, notice: "Quitaste #{product.name} del carrito."
   end
 
+  # Traduce el Cart de la sesión a la lista plana que espera Checkout, delega,
+  # y decide qué hacer según el Result. Ninguna lógica de negocio vive acá.
+  def checkout
+    result = Checkout.new(store: current_store, items: checkout_items).call
+
+    if result.ok?
+      session.delete(:cart)
+      redirect_to order_path(result.order), notice: "¡Compra confirmada! Orden ##{result.order.id}."
+    else
+      redirect_to cart_path, alert: result.error
+    end
+  end
+
   private
+
+  def checkout_items
+    @cart.items.map { |item| { product: item.product, quantity: item.quantity } }
+  end
+
+  # Placeholder: todavía no hay autenticación ni concepto de "tienda actual",
+  # así que usamos la única tienda de los seeds. Cuando exista login, esto pasa
+  # a salir de la sesión del usuario.
+  def current_store
+    Store.first
+  end
 
   def load_cart
     @cart = Cart.new(session[:cart])
