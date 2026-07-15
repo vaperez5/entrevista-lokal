@@ -19,7 +19,7 @@
         <% products.each do |product| %>
           <tr>
             <td><%= product.name %></td>
-            <td class="num"><%= clp(product.price) %></td>
+            <td class="num"><%= price_tag(Pricing.new(product)) %></td>
             <td>
               <%= form_with url: cart_items_path, method: :post, class: "inline-form" do |f| %>
                 <%= f.hidden_field :product_id, value: product.id %>

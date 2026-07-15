@@ -10,7 +10,28 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_07_14_215331) do
+ActiveRecord::Schema[8.0].define(version: 2026_07_14_225815) do
+  create_table "discount_products", force: :cascade do |t|
+    t.integer "discount_id", null: false
+    t.integer "product_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["discount_id", "product_id"], name: "index_discount_products_on_discount_id_and_product_id", unique: true
+    t.index ["discount_id"], name: "index_discount_products_on_discount_id"
+    t.index ["product_id"], name: "index_discount_products_on_product_id"
+  end
+
+  create_table "discounts", force: :cascade do |t|
+    t.integer "provider_id", null: false
+    t.string "name"
+    t.integer "percentage", null: false
+    t.datetime "starts_at", null: false
+    t.datetime "ends_at", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["provider_id"], name: "index_discounts_on_provider_id"
+  end
+
   create_table "order_items", force: :cascade do |t|
     t.integer "sub_order_id", null: false
     t.integer "product_id", null: false
@@ -18,6 +39,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_07_14_215331) do
     t.integer "unit_price"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.integer "list_price"
     t.index ["product_id"], name: "index_order_items_on_product_id"
     t.index ["sub_order_id"], name: "index_order_items_on_sub_order_id"
   end
@@ -61,6 +83,9 @@ ActiveRecord::Schema[8.0].define(version: 2026_07_14_215331) do
     t.index ["provider_id"], name: "index_sub_orders_on_provider_id"
   end
 
+  add_foreign_key "discount_products", "discounts"
+  add_foreign_key "discount_products", "products"
+  add_foreign_key "discounts", "providers"
   add_foreign_key "order_items", "products"
   add_foreign_key "order_items", "sub_orders"
   add_foreign_key "orders", "stores"

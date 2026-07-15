@@ -5,6 +5,7 @@ class Provider < ApplicationRecord
   MINIMUM_NOT_MET = "No se cumple con el monto mínimo de compra"
 
   has_many :products
+  has_many :discounts
 
   validates :min_amount, numericality: { only_integer: true, greater_than_or_equal_to: 0 }
 

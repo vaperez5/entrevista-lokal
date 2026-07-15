@@ -39,7 +39,7 @@
           <% items.each do |item| %>
             <tr>
               <td><%= item.product.name %></td>
-              <td class="num"><%= clp(item.product.price) %></td>
+              <td class="num"><%= price_tag(item.pricing) %></td>
               <td class="num"><%= item.quantity %></td>
               <td class="num"><%= clp(item.line_total) %></td>
               <td>

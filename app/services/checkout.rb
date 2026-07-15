@@ -33,7 +33,13 @@ class Checkout
     return failure(MISSING_STORE) if @store.nil?
     return failure(EMPTY_CART) if @items.empty?
 
-    groups = items_by_provider
+    # UN SOLO instante para toda la orden: con él se valúan los descuentos y se
+    # congelan los precios. Si cada item consultara Time.current por su cuenta,
+    # una compra que cruce el borde de una ventana de descuento podría congelar
+    # unos items con descuento y otros sin él. Toda la orden se valúa en `at`.
+    at = Time.current
+
+    groups = grouped_priced_items(at)
     validate_minimums!(groups)
 
     order = ActiveRecord::Base.transaction do
@@ -49,8 +55,31 @@ class Checkout
 
   private
 
+  # Valida cada item, le calcula su Pricing en el instante `at` y agrupa por
+  # proveedor. El precio con descuento sale de Pricing (fuente única); acá no se
+  # recalcula nada. Valida antes de agrupar: el service es su propia frontera de
+  # consistencia y no confía en que el Cart ya haya validado.
+  def grouped_priced_items(at)
+    @items.each { |item| validate_item!(item) }
+
+    @items
+      .map { |item| priced_item(item, at) }
+      .group_by { |item| item[:product].provider_id }
+  end
+
+  def priced_item(item, at)
+    pricing = Pricing.new(item[:product], at: at)
+
+    {
+      product:    item[:product],
+      quantity:   item[:quantity],
+      unit_price: pricing.unit_price,  # pagado, ya con descuento
+      list_price: pricing.list_price   # catálogo del momento
+    }
+  end
+
   # El mínimo de compra es del PROVEEDOR, así que se evalúa contra el subtotal
-  # que le corresponde a su subórden, no contra el total de la orden.
+  # POST-DESCUENTO de su subórden, no contra el total de la orden.
   #
   # Es todo o nada: basta que UN proveedor no llegue a su mínimo para que la
   # orden completa no se cree. Por eso se valida acá, antes de abrir la
@@ -59,12 +88,15 @@ class Checkout
   # El Checkout revalida lo que el Cart ya validó a propósito: el service es su
   # propia frontera de consistencia y no confía en quien lo llama (un carrito
   # viejo en la sesión, otro cliente, un job).
+  #
+  # unit_price.to_i: un precio corrupto (nil, saltándose validaciones) no debe
+  # reventar el chequeo del mínimo; su falla real la atrapa el create! del item.
   def validate_minimums!(groups)
     providers = Provider.where(id: groups.keys).index_by(&:id)
 
     errors = groups.filter_map do |provider_id, items|
       provider = providers.fetch(provider_id)
-      subtotal = items.sum { |item| item[:quantity] * item[:product].price.to_i }
+      subtotal = items.sum { |item| item[:quantity] * item[:unit_price].to_i }
 
       provider.minimum_error(subtotal) unless provider.minimum_met?(subtotal)
     end
@@ -80,27 +112,19 @@ class Checkout
       sub_order = order.sub_orders.create!(provider_id: provider_id)
 
       items.each do |item|
-        product = item[:product]
-
+        # Precios CONGELADOS: se copia el RESULTADO ya calculado por Pricing.
+        # La orden nunca vuelve a leer el catálogo ni recalcula el descuento; si
+        # mañana el precio o el descuento cambian, esta orden no se altera.
         sub_order.order_items.create!(
-          product: product,
-          quantity: item[:quantity],
-          # Precio CONGELADO: se copia el valor de product.price en este
-          # instante. Si mañana cambia el precio del producto, esta orden
-          # sigue valiendo lo que valía hoy.
-          unit_price: product.price
+          product:    item[:product],
+          quantity:   item[:quantity],
+          unit_price: item[:unit_price],
+          list_price: item[:list_price]
         )
       end
     end
 
     order
-  end
-
-  # Agrupa por provider_id. Valida cada item antes de agrupar: el service es su
-  # propia frontera de consistencia y no confía en que el Cart ya haya validado.
-  def items_by_provider
-    @items.each { |item| validate_item!(item) }
-    @items.group_by { |item| item[:product].provider_id }
   end
 
   def validate_item!(item)

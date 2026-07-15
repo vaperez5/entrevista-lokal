@@ -8,8 +8,10 @@
 </p>
 
 <p class="hint">
-  Los precios de esta orden quedaron <strong>fijados al momento de la compra</strong>.
-  Si el catálogo cambia de precio después, esta orden no cambia.
+  Los precios de esta orden quedaron <strong>fijados al momento de la compra</strong>,
+  incluido el descuento aplicado. Cuando el precio de compra es menor al de lista,
+  se muestra el de lista tachado. Si el catálogo o los descuentos cambian después,
+  esta orden no cambia.
 </p>
 
 <% @order.sub_orders.each do |sub_order| %>
@@ -29,7 +31,14 @@
         <% sub_order.order_items.each do |item| %>
           <tr>
             <td><%= item.product.name %></td>
-            <td class="num"><%= clp(item.unit_price) %></td>
+            <td class="num">
+              <% if item.discounted? %>
+                <span class="list-price"><%= clp(item.list_price) %></span>
+                <strong><%= clp(item.unit_price) %></strong>
+              <% else %>
+                <%= clp(item.unit_price) %>
+              <% end %>
+            </td>
             <td class="num"><%= item.quantity %></td>
             <td class="num"><%= clp(item.line_total) %></td>
           </tr>

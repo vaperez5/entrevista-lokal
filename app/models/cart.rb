@@ -23,10 +23,20 @@ class Cart
     end
   end
 
-  # Una línea del carrito con el Product ya resuelto desde la BD.
-  Item = Struct.new(:product, :quantity, keyword_init: true) do
+  # Una línea del carrito con el Product ya resuelto desde la BD y su Pricing
+  # (precio de lista y precio con descuento) calculado para un instante dado.
+  #
+  # El precio con descuento NO se calcula acá: se delega en Pricing, que es la
+  # única fuente de verdad del cálculo. El Item solo lo expone.
+  Item = Struct.new(:product, :quantity, :pricing, keyword_init: true) do
+    def unit_price = pricing.unit_price
+    def list_price = pricing.list_price
+    def discount   = pricing.discount
+    def discounted? = pricing.discounted?
+
+    # Total de línea sobre el precio EFECTIVO (con descuento si lo hay).
     def line_total
-      quantity * product.price
+      quantity * unit_price
     end
   end
 
@@ -68,12 +78,17 @@ class Cart
 
   # Resuelve los ids contra la BD en una sola consulta (sin N+1). Los ids que
   # ya no existen —sesión vieja, producto borrado— se omiten en vez de romper.
-  def items
-    products = Product.where(id: @quantities.keys).includes(:provider).index_by(&:id)
+  #
+  # at: el instante para valuar los descuentos. Por defecto "ahora": el carrito
+  # muestra precios vivos. El congelado real ocurre recién en Checkout.
+  def items(at: Time.current)
+    products = Product.where(id: @quantities.keys)
+                      .includes(:provider, :discounts)
+                      .index_by(&:id)
 
     @quantities.filter_map do |product_id, quantity|
       product = products[product_id]
-      Item.new(product: product, quantity: quantity) if product
+      Item.new(product: product, quantity: quantity, pricing: Pricing.new(product, at: at)) if product
     end
   end
 
@@ -81,18 +96,18 @@ class Cart
   # arma las subórdenes, y por eso es también el criterio con el que se evalúa
   # el mínimo de compra: el mínimo se mide contra el subtotal de cada proveedor,
   # no contra el total del carrito.
-  def items_by_provider
-    items.group_by { |item| item.product.provider }
+  def items_by_provider(at: Time.current)
+    items(at: at).group_by { |item| item.product.provider }
   end
 
-  # Mensajes de los proveedores cuyo subtotal no llega a su monto mínimo.
-  # Vacío = el carrito se puede confirmar.
+  # Mensajes de los proveedores cuyo subtotal (POST-DESCUENTO, vía line_total)
+  # no llega a su monto mínimo. Vacío = el carrito se puede confirmar.
   #
   # Devuelve TODOS los incumplimientos, no el primero: si dos proveedores no
   # llegan al mínimo, el usuario se entera de los dos de una vez en lugar de
   # arreglar uno y toparse con el otro.
-  def minimum_errors
-    items_by_provider.filter_map do |provider, items|
+  def minimum_errors(at: Time.current)
+    items_by_provider(at: at).filter_map do |provider, items|
       subtotal = items.sum(&:line_total)
       provider.minimum_error(subtotal) unless provider.minimum_met?(subtotal)
     end

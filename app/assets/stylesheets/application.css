@@ -124,3 +124,16 @@ input[type="submit"] {
   border-color: #c62828;
   color: #b71c1c;
 }
+
+/* Descuentos: precio de lista tachado y el porcentaje resaltado. */
+.list-price {
+  text-decoration: line-through;
+  color: #888;
+}
+
+.discount-badge {
+  color: #2e7d32;
+  font-weight: 600;
+}
+
+.below-min { color: #b71c1c; }

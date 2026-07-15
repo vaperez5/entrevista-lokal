@@ -78,6 +78,37 @@ class CheckoutTest < ActiveSupport::TestCase
     assert_equal 17_980, order.total
   end
 
+  # --- Descuento: se congela el RESULTADO, no la receta ---
+
+  test "una compra con descuento vigente congela el precio pagado y el de lista" do
+    discount_on(@cafe, percentage: 20)  # 8990 -> 7192
+
+    order = checkout({ product: @cafe, quantity: 2 }).order
+    item  = order.sub_orders.sole.order_items.sole
+
+    assert_equal 8_990, item.list_price   # catálogo del momento
+    assert_equal 7_192, item.unit_price   # efectivamente pagado
+    assert_equal 14_384, order.total      # 2 * 7192
+  end
+
+  test "editar o borrar el descuento después no altera una orden ya creada" do
+    discount = discount_on(@cafe, percentage: 20)
+
+    order = checkout({ product: @cafe, quantity: 2 }).order
+    assert_equal 7_192,  order.sub_orders.sole.order_items.sole.unit_price
+    assert_equal 14_384, order.total
+
+    # Cambio la receta a lo bestia: subo el porcentaje y luego borro el descuento.
+    discount.update!(percentage: 50)
+    discount.destroy!
+    order.reload
+
+    item = order.sub_orders.sole.order_items.sole
+    assert_equal 8_990,  item.list_price
+    assert_equal 7_192,  item.unit_price   # NO se recalcula
+    assert_equal 14_384, order.total
+  end
+
   # --- Consistencia transaccional ---
 
   test "si la creación falla a mitad de camino no queda nada creado" do
@@ -163,6 +194,30 @@ class CheckoutTest < ActiveSupport::TestCase
     assert result.ok?
   end
 
+  test "el mínimo se evalúa POST-DESCUENTO: alcanza a precio de lista pero cae bajo el mínimo con el descuento" do
+    # A precio de lista, 2 cafés = 17.980, que supera el mínimo de 15.000.
+    # Con 20% de descuento el subtotal baja a 14.384 y ya NO lo alcanza.
+    @norte.update!(min_amount: 15_000)
+    discount_on(@cafe, percentage: 20)
+    before = counts
+
+    result = checkout({ product: @cafe, quantity: 2 })
+
+    assert_not result.ok?
+    assert_match Provider::MINIMUM_NOT_MET, result.error
+    assert_equal before, counts
+  end
+
+  test "el mínimo se cumple si el subtotal POST-DESCUENTO iguala exactamente el mínimo" do
+    @norte.update!(min_amount: 14_384)  # exactamente 2 * 7192
+    discount_on(@cafe, percentage: 20)
+
+    result = checkout({ product: @cafe, quantity: 2 })
+
+    assert result.ok?
+    assert_equal 14_384, result.order.total
+  end
+
   # --- Entradas inválidas ---
 
   test "un carrito vacío falla con un mensaje claro y no crea nada" do
@@ -202,6 +257,18 @@ class CheckoutTest < ActiveSupport::TestCase
 
   def checkout(*items)
     Checkout.new(store: @store, items: items).call
+  end
+
+  # Descuento vigente ahora sobre un producto, para los tests de descuento/mínimo.
+  def discount_on(product, percentage:)
+    Discount.create!(
+      provider: product.provider,
+      name: "Promo #{product.name} #{percentage}",
+      percentage: percentage,
+      starts_at: 1.hour.ago,
+      ends_at: 1.hour.from_now,
+      products: [ product ]
+    )
   end
 
   def sub_order_for(order, provider)

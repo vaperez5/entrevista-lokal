@@ -105,6 +105,21 @@ class CartControllerTest < ActionDispatch::IntegrationTest
     assert_equal({ @product.id => 2 }, Cart.new(session[:cart]).to_h)
   end
 
+  test "el carrito muestra el precio de lista tachado y el descontado cuando hay descuento vigente" do
+    Discount.create!(
+      provider: @provider, name: "Promo", percentage: 20,
+      starts_at: 1.hour.ago, ends_at: 1.hour.from_now, products: [ @product ]
+    )
+    post cart_items_path, params: { product_id: @product.id, quantity: 1 }
+
+    get cart_path
+
+    assert_response :success
+    assert_match "list-price", response.body  # el precio de lista va tachado
+    assert_match "$4.000",     response.body  # 5000 con 20% de descuento
+    assert_match "(-20%)",     response.body
+  end
+
   test "el carrito avisa cuánto falta para el mínimo del proveedor" do
     @provider.update!(min_amount: 20_000)
     post cart_items_path, params: { product_id: @product.id, quantity: 2 }
